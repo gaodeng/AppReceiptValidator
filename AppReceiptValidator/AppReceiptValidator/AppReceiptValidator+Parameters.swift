@@ -19,6 +19,7 @@ public extension AppReceiptValidator {
         public var receiptOrigin: ReceiptOrigin = .installedInMainBundle
         public var shouldValidateSignaturePresence: Bool = true
         public var signatureValidation: SignatureValidation = .shouldValidate(rootCertificateOrigin: .cerFileBundledWithAppReceiptValidator)
+        public var PKCS7_NOCHAIN:Bool = false
         public var shouldValidateHash: Bool = true
         public var deviceIdentifier: DeviceIdentifier = .currentDevice
         public var propertyValidations: [PropertyValidation] = []

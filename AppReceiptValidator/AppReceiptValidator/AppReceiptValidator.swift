@@ -40,7 +40,7 @@ public struct AppReceiptValidator {
             if case .shouldValidate(let rootCertificateOrigin) = parameters.signatureValidation {
                 guard let appleRootCertificateData = rootCertificateOrigin.loadData() else { throw Error.appleRootCertificateNotFound }
 
-                try self.checkSignatureAuthenticity(pkcs7: receiptContainer, appleRootCertificateData: appleRootCertificateData)
+              try self.checkSignatureAuthenticity(pkcs7: receiptContainer, appleRootCertificateData: appleRootCertificateData, flags: parameters.PKCS7_NOCHAIN ? PKCS7_NOCHAIN : 0)
             }
 
             let receipt = try self.parseReceipt(pkcs7: receiptContainer).receipt
@@ -166,7 +166,7 @@ private extension AppReceiptValidator {
         guard pkcs7SignedTypeCode == NID_pkcs7_signed else { throw Error.receiptNotSigned }
     }
 
-    func checkSignatureAuthenticity(pkcs7: PKCS7Wrapper, appleRootCertificateData: Data) throws {
+    func checkSignatureAuthenticity(pkcs7: PKCS7Wrapper, appleRootCertificateData: Data, flags: Int32 = 0) throws {
         let appleRootCertificateBIO = BIOWrapper(data: appleRootCertificateData)
 
         guard let appleRootCertificateX509 = d2i_X509_bio(appleRootCertificateBIO.bio, nil) else { throw Error.malformedAppleRootCertificate }
@@ -174,16 +174,16 @@ private extension AppReceiptValidator {
         defer {
             X509_free(appleRootCertificateX509)
         }
-        try self.verifyAuthenticity(x509Certificate: appleRootCertificateX509, pkcs7: pkcs7)
+        try self.verifyAuthenticity(x509Certificate: appleRootCertificateX509, pkcs7: pkcs7, flags:flags)
     }
 
-    private func verifyAuthenticity(x509Certificate: OpaquePointer, pkcs7: PKCS7Wrapper) throws {
+    private func verifyAuthenticity(x509Certificate: OpaquePointer, pkcs7: PKCS7Wrapper, flags: Int32 = 0) throws {
         let x509CertificateStore = X509_STORE_new()
         defer {
             X509_STORE_free(x509CertificateStore)
         }
         X509_STORE_add_cert(x509CertificateStore, x509Certificate)
-        let result = PKCS7_verify(pkcs7.pkcs7, nil, x509CertificateStore, nil, nil, 0)
+        let result = PKCS7_verify(pkcs7.pkcs7, nil, x509CertificateStore, nil, nil, flags)
 
         if result != 1 {
             throw Error.receiptSignatureInvalid
